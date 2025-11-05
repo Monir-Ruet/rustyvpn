@@ -7,6 +7,14 @@ edition = "2021"
 dioxus = { workspace = true, features = ["router"] }
 dioxus-desktop = "0.7.0"
 ui = { workspace = true }
+ssh = { workspace = true }
+proxy = { workspace = true }
+socks = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio-util = { workspace = true }
 
 [features]
 default = ["desktop"]

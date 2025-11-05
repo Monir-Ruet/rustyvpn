@@ -1,11 +1,62 @@
+use anyhow::Result;
 use dioxus::prelude::*;
+use socks::SocksBuilder;
+use ssh::SshBuilder;
+use tokio_util::sync::CancellationToken;
+use tracing::error;
 
 use crate::views::app::Route;
 
 const PAYLOAD_GENERATE_ICON: Asset = asset!("/assets/icons/code.png");
 
+#[derive(Clone, Copy, PartialEq)]
+enum ConnectionStatus {
+    Disconnected,
+    Connecting,
+    Connected,
+}
+
 #[component]
 pub fn Home() -> Element {
+    let mut cancellation_token = use_signal(|| CancellationToken::new());
+    let mut connection_status = use_signal(|| ConnectionStatus::Disconnected);
+    let connection_status_clone = connection_status.read().clone();
+
+    #[inline]
+    async fn connect_ssh_and_proxy(cancellation_token: CancellationToken) -> Result<()> {
+        let mut ssh = SshBuilder::new().build();
+        ssh.connect().await?;
+        ssh.authenticate().await?;
+        tokio::spawn(async move {
+            if let Err(e) = SocksBuilder::new()
+                .with_cancellation_token(cancellation_token)
+                .build()
+                .run()
+                .await
+            {
+                error!("Dynamic port forwarding error: {:?}", e);
+            }
+        });
+        Ok(())
+    }
+
+    let handle_connection = move |_| {
+        if connection_status_clone == ConnectionStatus::Connected {
+            cancellation_token.read().clone().cancel();
+            connection_status.set(ConnectionStatus::Disconnected);
+        } else {
+            cancellation_token.set(CancellationToken::new());
+            spawn(async move {
+                connection_status.set(ConnectionStatus::Connecting);
+                if let Err(_) = connect_ssh_and_proxy(cancellation_token.read().clone()).await {
+                    connection_status.set(ConnectionStatus::Disconnected);
+                    return;
+                }
+                connection_status.set(ConnectionStatus::Connected);
+            });
+        }
+    };
+
     rsx! {
         div { class: "min-h-screen bg-black/90 text-gray-100 flex flex-col items-center justify-center p-6",
 
@@ -47,7 +98,6 @@ pub fn Home() -> Element {
                                     class: "w-4 h-4",
                                     src: PAYLOAD_GENERATE_ICON,
                                 }
-
                             }
                         }
                     }
@@ -61,8 +111,16 @@ pub fn Home() -> Element {
                 }
 
                 div { class: "flex justify-center",
-                    button { class: "w-full py-3 rounded-md bg-smoke/20 active:scale-95 transition-all duration-200 font-semibold text-md shadow-md shadow-blue-900/99 border-1 border-blue-500",
-                        "Connect via SSH"
+
+                    button {
+                        class: "w-full py-3 rounded-md bg-smoke/20 active:scale-95 transition-all duration-200 font-semibold text-md shadow-md shadow-blue-900/99 border-1 border-blue-500",
+                        disabled: connection_status_clone == ConnectionStatus::Connecting,
+                        onclick: handle_connection,
+                        match connection_status_clone {
+                            ConnectionStatus::Disconnected => "Connect",
+                            ConnectionStatus::Connecting => "Connecting...",
+                            ConnectionStatus::Connected => "Disconnect",
+                        }
                     }
                 }
 

@@ -4,10 +4,22 @@ members = [
     "packages/ui",
     "packages/desktop",
     "packages/mobile",
+    "core/ssh",
+    "core/proxy",
 ]
 
 [workspace.dependencies]
 dioxus = { version = "0.7.0" }
+ssh = {path = "core/ssh"}
+proxy = {path = "core/proxy"}
+socks = {path = "core/socks"}
+anyhow = "1.0.100"
+russh = "0.54.6"
+tokio = "1.48.0"
+tokio-socks = "0.5.2"
+tokio-util = "0.7.16"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.20"
 
 # workspace
 ui = { path = "packages/ui" }
