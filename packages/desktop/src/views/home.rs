@@ -1,11 +1,12 @@
+use crate::views::app::Route;
 use anyhow::Result;
 use dioxus::prelude::*;
+use reqwest;
+use serde::Deserialize;
 use socks::SocksBuilder;
 use ssh::SshBuilder;
 use tokio_util::sync::CancellationToken;
 use tracing::error;
-
-use crate::views::app::Route;
 
 const PAYLOAD_GENERATE_ICON: Asset = asset!("/assets/icons/code.png");
 
@@ -16,11 +17,27 @@ enum ConnectionStatus {
     Connected,
 }
 
+#[derive(Debug, Deserialize)]
+struct IpResponse {
+    ip: String,
+}
+
+async fn get_public_ip() -> Result<String, Box<dyn std::error::Error>> {
+    let response = reqwest::get("https://api.ipify.org?format=json")
+        .await?
+        .json::<IpResponse>()
+        .await?;
+
+    Ok(response.ip)
+}
+
 #[component]
 pub fn Home() -> Element {
     let mut cancellation_token = use_signal(|| CancellationToken::new());
     let mut connection_status = use_signal(|| ConnectionStatus::Disconnected);
     let connection_status_clone = connection_status.read().clone();
+    let mut ip = use_signal(|| "".to_string());
+    let ip_clone = ip.read().clone();
 
     #[inline]
     async fn connect_ssh_and_proxy(cancellation_token: CancellationToken) -> Result<()> {
@@ -47,12 +64,18 @@ pub fn Home() -> Element {
         } else {
             cancellation_token.set(CancellationToken::new());
             spawn(async move {
-                connection_status.set(ConnectionStatus::Connecting);
-                if let Err(_) = connect_ssh_and_proxy(cancellation_token.read().clone()).await {
-                    connection_status.set(ConnectionStatus::Disconnected);
-                    return;
+                loop {
+                    connection_status.set(ConnectionStatus::Connecting);
+                    if let Err(_) = connect_ssh_and_proxy(cancellation_token.read().clone()).await {
+                        connection_status.set(ConnectionStatus::Disconnected);
+                        continue;
+                    }
+                    if let Ok(retrieved_ip) = get_public_ip().await {
+                        ip.set(retrieved_ip);
+                    }
+                    connection_status.set(ConnectionStatus::Connected);
+                    break;
                 }
-                connection_status.set(ConnectionStatus::Connected);
             });
         }
     };
@@ -127,7 +150,12 @@ pub fn Home() -> Element {
                 div { class: "border-t border-gray-800 pt-4 space-y-2 text-sm text-gray-400",
                     div { class: "flex justify-between items-center",
                         span { "Public IP:" }
-                        span { class: "text-gray-200 font-mono", "Not connected" }
+                        span { class: "text-gray-200 font-mono",
+                            match connection_status_clone {
+                                ConnectionStatus::Connected => ip_clone.as_str(),
+                                _ => "Not connected",
+                            }
+                        }
                     }
                     div { class: "flex justify-between items-center",
                         span { "Server Region:" }

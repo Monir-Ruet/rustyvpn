@@ -20,6 +20,8 @@ tokio-socks = "0.5.2"
 tokio-util = "0.7.16"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.20"
+reqwest = { version = "0.12.24", features = ["json", "socks"] }
+serde = { version="1.0.228", features=["derive"] }
 
 # workspace
 ui = { path = "packages/ui" }
