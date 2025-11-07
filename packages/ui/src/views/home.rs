@@ -1,6 +1,11 @@
-use crate::views::app::Route;
+use crate::route::Route;
 use anyhow::Result;
 use dioxus::prelude::*;
+use jni::{
+    objects::{JObject, JValue},
+    JavaVM,
+};
+use ndk_context::android_context;
 use reqwest;
 use serde::Deserialize;
 use socks::SocksBuilder;
@@ -31,6 +36,82 @@ async fn get_public_ip() -> Result<String, Box<dyn std::error::Error>> {
     Ok(response.ip)
 }
 
+pub fn call_java_max(a: i32, b: i32) -> String {
+    unsafe {
+        let ctx = android_context();
+        let vm = JavaVM::from_raw(ctx.vm().cast()).unwrap();
+        let mut env = vm.attach_current_thread().unwrap();
+        let result = env
+            .call_static_method(
+                "java/lang/Math",
+                "max",
+                "(II)I",
+                &[JValue::Int(a), JValue::Int(b)],
+            )
+            .unwrap()
+            .i()
+            .unwrap();
+
+        result.to_string()
+    }
+}
+
+pub fn request_permission(permission: &str) -> Result<()> {
+    unsafe {
+        let ctx = android_context();
+        let vm = JavaVM::from_raw(ctx.vm().cast())?;
+        let mut env = vm.attach_current_thread()?;
+        let activity = JObject::from_raw(ctx.context() as *mut _);
+
+        if activity.is_null() {
+            anyhow::bail!("Err");
+        }
+
+        let permission_jstring = env.new_string(permission)?;
+        let permission_jobject = JObject::from(permission_jstring);
+        let string_class = env.find_class("java/lang/String")?;
+        let permissions_array = env.new_object_array(1, string_class, JObject::null())?;
+        env.set_object_array_element(&permissions_array, 0, permission_jobject)?;
+        env.call_method(
+            activity,
+            "requestPermissions",
+            "([Ljava/lang/String;I)V",
+            &[JValue::Object(&permissions_array), JValue::Int(1)],
+        )?;
+
+        info!("requestPermissions called");
+
+        Ok(())
+    }
+}
+
+pub fn check_if_permission_granted(permission: &str) -> Result<bool> {
+    unsafe {
+        let ctx = android_context();
+        let vm = JavaVM::from_raw(ctx.vm().cast())?;
+        let mut env = vm.attach_current_thread()?;
+        let activity = JObject::from_raw(ctx.context() as *mut _);
+
+        if activity.is_null() {
+            anyhow::bail!("Err");
+        }
+
+        let permission_jstring = env.new_string(permission)?;
+        let permission_jobject = JObject::from(permission_jstring);
+
+        let result = env.call_method(
+            activity,
+            "checkSelfPermission",
+            "(Ljava/lang/String;)I",
+            &[JValue::Object(&permission_jobject)],
+        )?;
+
+        let granted = result.i()? == 0;
+
+        Ok(granted)
+    }
+}
+
 #[component]
 pub fn Home() -> Element {
     let mut cancellation_token = use_signal(|| CancellationToken::new());
@@ -38,6 +119,8 @@ pub fn Home() -> Element {
     let connection_status_clone = connection_status.read().clone();
     let mut ip = use_signal(|| "".to_string());
     let ip_clone = ip.read().clone();
+    // let x = use_signal(|| call_java_max(10, 50));
+    // let x_clone = x.read().clone();
 
     #[inline]
     async fn connect_ssh_and_proxy(cancellation_token: CancellationToken) -> Result<()> {
@@ -58,7 +141,7 @@ pub fn Home() -> Element {
     }
 
     let handle_connection = move |_| {
-        if connection_status_clone == ConnectionStatus::Connected {
+        if connection_status_clone != ConnectionStatus::Disconnected {
             cancellation_token.read().clone().cancel();
             connection_status.set(ConnectionStatus::Disconnected);
         } else {
@@ -82,7 +165,17 @@ pub fn Home() -> Element {
 
     rsx! {
         div { class: "min-h-screen bg-black/90 text-gray-100 flex flex-col items-center justify-center p-6",
-
+            // div { "{x_clone}" }
+            button {
+                onclick: |_| {
+                    if (!check_if_permission_granted("android.permission.READ_CONTACTS").unwrap()) {
+                        info!("Permission not granted");
+                    } else {
+                        request_permission("android.permission.READ_CONTACTS").unwrap();
+                    }
+                },
+                "Get Contacts"
+            }
             div { class: "text-4xl font-extrabold mb-5 tracking-wide text-blue-400 drop-shadow-lg",
                 span { class: "text-red-500", "Rusty" }
                 "VPN"

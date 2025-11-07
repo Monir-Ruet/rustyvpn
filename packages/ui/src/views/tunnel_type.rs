@@ -1,3 +1,4 @@
+use crate::route::Route;
 use dioxus::prelude::*;
 
 #[component]
@@ -116,7 +117,7 @@ pub fn TunnelType() -> Element {
                     label { "Custom Payload" }
                 }
             }
-            Link { to: crate::views::app::Route::Home {},
+            Link { to: Route::Home {},
                 button { class: "w-full py-3 rounded-sm bg-white/20 text-sm", "SAVE" }
             }
         }

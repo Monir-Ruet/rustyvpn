@@ -1,3 +1,4 @@
+use crate::route::Route;
 use dioxus::prelude::*;
 
 const NEXT_ICON: Asset = asset!("/assets/icons/next.png");
@@ -8,9 +9,7 @@ pub fn PayloadGenerator() -> Element {
         div { class: "min-h-screen bg-black/92 justify-center p-5",
             div { class: "flex flex-col mx-auto gap-4 text-white/70",
                 div {
-                    Link {
-                        to: crate::views::app::Route::TunnelType {
-                        },
+                    Link { to: crate::route::Route::TunnelType {},
                         button { class: "w-full text-white bg-white/15",
                             div { class: "flex items-center justify-between p-4",
                                 p { class: "text-xs text-white/60",
@@ -202,7 +201,7 @@ pub fn PayloadGenerator() -> Element {
                     }
                 }
 
-                Link { to: crate::views::app::Route::Home {},
+                Link { to: Route::Home {},
                     button { class: "w-full py-3 rounded-sm bg-white/20 text-sm", "GENERATE PAYLOAD" }
                 }
             }

@@ -1,7 +1,6 @@
-use crate::views::App;
 use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
 use tracing::info;
-mod views;
+use ui::App;
 
 #[tokio::main]
 async fn main() {
