@@ -2,12 +2,11 @@
 name = "rustyvpn"
 version = "0.1.0"
 
-[application.id]
-android = "com.orionexx.rustyvpn"
-
-[mobile]
+[android]
 package_name = "com.orionexx.rustyvpn"
-permissions = ["INTERNET", "ACCESS_FINE_LOCATION"]
+permissions = [
+    "android.permission.READ_CONTACTS",
+]
 
 [bundle]
 identifier = "com.orionexx.rustyvpn"
