@@ -7,3 +7,9 @@
 **/*.rs.bk
 node_modules/
 **/global.css
+/android/.gradle/
+/android/app/build/
+.idea
+/android/local.properties
+/android/app/src/main/jniLibs/
+/android/build/

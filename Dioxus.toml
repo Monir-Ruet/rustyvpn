@@ -1,0 +1,16 @@
+[application]
+name = "rustyvpn"
+version = "0.1.0"
+
+[application.id]
+android = "com.orionexx.rustyvpn"
+
+[mobile]
+package_name = "com.orionexx.rustyvpn"
+permissions = ["INTERNET", "ACCESS_FINE_LOCATION"]
+
+[bundle]
+identifier = "com.orionexx.rustyvpn"
+name = "rustyvpn"
+publisher = "Orionexx"
+version = "0.1.0"
