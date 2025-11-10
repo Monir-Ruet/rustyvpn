@@ -1,9 +1,8 @@
+#[allow(unused_imports)]
+use crate::jn_helper::JniHelper;
+use crate::route::Route;
 use crate::types::ConnectionStatus;
 use crate::vpn_utils::get_public_ip;
-use crate::{
-    jni_utils::{check_if_permission_granted, request_permission},
-    route::Route,
-};
 use anyhow::Result;
 use dioxus::prelude::*;
 use socks::SocksBuilder;
@@ -20,6 +19,10 @@ pub fn Home() -> Element {
     let connection_status_clone = connection_status.read().clone();
     let mut ip = use_signal(|| "".to_string());
     let ip_clone = ip.read().clone();
+    #[cfg(target_os = "android")]
+    {
+        let _jni_helper = use_signal(|| JniHelper::new());
+    }
 
     #[inline]
     async fn connect_ssh_and_proxy(cancellation_token: CancellationToken) -> Result<()> {
@@ -43,6 +46,13 @@ pub fn Home() -> Element {
         if connection_status_clone != ConnectionStatus::Disconnected {
             cancellation_token.read().clone().cancel();
             connection_status.set(ConnectionStatus::Disconnected);
+            #[cfg(target_os = "android")]
+            {
+                _jni_helper
+                    .read()
+                    .call_vpn_method("stopVpnService")
+                    .unwrap();
+            }
         } else {
             cancellation_token.set(CancellationToken::new());
             spawn(async move {
@@ -55,6 +65,10 @@ pub fn Home() -> Element {
                     if let Ok(retrieved_ip) = get_public_ip().await {
                         ip.set(retrieved_ip);
                     }
+                    #[cfg(target_os = "android")]
+                    {
+                        let _ = _jni_helper.read().call_vpn_method("startVpn");
+                    }
                     connection_status.set(ConnectionStatus::Connected);
                     break;
                 }
@@ -64,16 +78,6 @@ pub fn Home() -> Element {
 
     rsx! {
         div { class: "min-h-screen bg-black/90 text-gray-100 flex flex-col items-center justify-center p-6",
-            button {
-                onclick: |_| {
-                    if !check_if_permission_granted("android.permission.READ_CONTACTS").unwrap() {
-                        info!("Permission not granted");
-                    } else {
-                        request_permission("android.permission.READ_CONTACTS").unwrap();
-                    }
-                },
-                "Get Contacts"
-            }
             div { class: "text-4xl font-extrabold mb-5 tracking-wide text-blue-400 drop-shadow-lg",
                 span { class: "text-red-500", "Rusty" }
                 "VPN"

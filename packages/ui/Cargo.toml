@@ -14,8 +14,11 @@ serde = { workspace = true }
 reqwest = { workspace = true }
 ssh = { workspace = true }
 proxy = { workspace = true }
+utils = { workspace = true }
 socks = { workspace = true }
 openssl = { workspace = true }
 ndk-context = "0.1.1"
 jni = { workspace =  true }
+tun2socks = "0.1.10"
+libc = { workspace = true }
 

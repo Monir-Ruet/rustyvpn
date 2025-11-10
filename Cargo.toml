@@ -6,6 +6,7 @@ members = [
     "packages/mobile",
     "core/ssh",
     "core/proxy",
+    "core/utils"
 ]
 
 [workspace.dependencies]
@@ -13,6 +14,7 @@ dioxus = { version = "0.7.0" }
 ssh = {path = "core/ssh"}
 proxy = {path = "core/proxy"}
 socks = {path = "core/socks"}
+utils = { path = "core/utils" }
 anyhow = "1.0.100"
 russh = "0.54.6"
 tokio = "1.48.0"
